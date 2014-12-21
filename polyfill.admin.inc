@@ -20,6 +20,14 @@ function polyfill_list() {
 
 }
 
+
+
+
+/**
+ * ******************************************************************
+ */
+
+
 /**
  * Form builder; Edit an image style name and effects order.
  *
@@ -213,21 +221,11 @@ function polyfill_add_form_submit($form, &$form_state) {
 function polyfill_delete_form($form, &$form_state, $set) {
   $form_state['set'] = $set;
 
-  $replacement_styles = image_style_options(TRUE, PASS_THROUGH);
-  $form['replacement'] = array(
-    '#title' => t('Replacement style'),
-    '#type' => 'select',
-    '#options' => $replacement_styles,
-    '#empty_option' => t('No replacement, just delete'),
-  );
+  $message = t('Are you sure you want to delete polyfill set %name?', array('%name' => $set['label']));
+  $caption = '<p>' . t('This action cannot be undone.') . '</p>';
 
-  return confirm_form(
-    $form,
-    t('Optionally select a style before deleting %style', array('%style' => $set['label'])),
-    'admin/config/media/polyfill',
-    t('If this style is in use on the site, you may select another style to replace it. All images that have been generated for this style will be permanently deleted.'),
-    t('Delete'), t('Cancel')
-  );
+  return confirm_form($form, $message, 'admin/config/media/polyfill', $caption, t('Delete'));
+
 }
 
 /**
@@ -237,7 +235,7 @@ function polyfill_delete_form_submit($form, &$form_state) {
   $set = $form_state['set'];
 
   polyfill_set_delete($set);
-  drupal_set_message(t('Set %name was deleted.', array('%name' => $style['label'])));
+  drupal_set_message(t('Set %name was deleted.', array('%name' => $set['label'])));
   $form_state['redirect'] = 'admin/config/media/polyfill';
 }
 
@@ -416,25 +414,24 @@ function polyfill_resize_form($data) {
 function theme_polyfill_list($variables) {
   $sets = $variables['sets'];
 
-  $header = array(t('Set name'), t('Settings'), array('data' => t('Operations'), 'colspan' => 3));
+  $header = array(t('Set name'), array('data' => t('Operations'), 'colspan' => 2));
   $rows = array();
   foreach ($sets as $set) {
     $row = array();
-    $row[] = l($set['label'], 'admin/config/media/polyfill/edit/' . $set['pid']);
+    $row[] = l($set['label'], 'admin/config/media/polyfill/' . $set['pid'] . '/edit');
     $link_attributes = array(
       'attributes' => array(
         'class' => array('polyfill-set-link'),
       ),
     );
-    $row[] = t('Custom');
-    $row[] = l(t('edit'), 'admin/config/media/polyfill/edit/' . $set['pid'], $link_attributes);
-    $row[] = l(t('delete'), 'admin/config/media/polyfill/delete/' . $set['pid'], $link_attributes);
+    $row[] = l(t('edit'), 'admin/config/media/polyfill/' . $set['pid'] . '/edit', $link_attributes);
+    $row[] = l(t('delete'), 'admin/config/media/polyfill/' . $set['pid'] . '/delete', $link_attributes);
     $rows[] = $row;
   }
 
   if (empty($rows)) {
     $rows[] = array(array(
-      'colspan' => 4,
+      'colspan' => 3,
       'data' => t('There are currently no sets. <a href="!url">Add a new one</a>.', array('!url' => url('admin/config/media/polyfill/add'))),
     ));
   }

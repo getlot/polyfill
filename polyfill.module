@@ -35,20 +35,19 @@ function polyfill_menu() {
     'weight' => 2,
     'file' => 'polyfill.admin.inc',
   );
-  $items['admin/config/media/polyfill/edit/%polyfill_set'] = array(
+  $items['admin/config/media/polyfill/%polyfill_set/edit'] = array(
     'title' => 'Edit style',
     'description' => 'Configure polyfill set.',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('polyfill_form', 5),
+    'page arguments' => array('polyfill_form', 4),
     'access arguments' => array('administer polyfill sets'),
     'file' => 'polyfill.admin.inc',
   );
-  $items['admin/config/media/polyfill/delete/%polyfill_set'] = array(
+  $items['admin/config/media/polyfill/%polyfill_set/delete'] = array(
     'title' => 'Delete style',
     'description' => 'Delete polyfill set.',
-    'load arguments' => array(NULL, (string) IMAGE_STORAGE_NORMAL),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('polyfill_delete_form', 5),
+    'page arguments' => array('polyfill_delete_form', 4),
     'access arguments' => array('administer polyfill sets'),
     'file' => 'polyfill.admin.inc',
   );
@@ -98,13 +97,18 @@ function polyfill_theme() {
     'polyfill_styles' => array(
       'render element' => 'form',
     ),
-    /*
-    'polyfill_formatter' => array(
-      'variables' => array('item' => NULL, 'path' => NULL, 'image_style' => NULL),
-    ),
-    */
   );
 }
+
+
+
+
+
+/**
+ * ******************************************************************
+ */
+
+
 
 /**
  * Loads a style by style name or ID.
@@ -127,28 +131,12 @@ function polyfill_theme() {
  *   If the image style name or ID is not valid, an empty array is returned.
  * @see image_effect_load()
  */
-function polyfill_load($name = NULL, $isid = NULL, $include = NULL) {
-  $styles = image_styles();
+function polyfill_set_load($pid = NULL) {
+  $sets = polyfill_sets();
 
   // If retrieving by name.
-  if (isset($name) && isset($styles[$name])) {
-    $style = $styles[$name];
-  }
-
-  // If retrieving by image style id.
-  if (!isset($name) && isset($isid)) {
-    foreach ($styles as $name => $database_style) {
-      if (isset($database_style['isid']) && $database_style['isid'] == $isid) {
-        $style = $database_style;
-        break;
-      }
-    }
-  }
-
-  // Restrict to the specific type of flag. This bitwise operation basically
-  // states "if the storage is X, then allow".
-  if (isset($style) && (!isset($include) || ($style['storage'] & (int) $include))) {
-    return $style;
+  if (isset($pid) && isset($sets[$pid])) {
+    return $sets[$pid];
   }
 
   // Otherwise the style was not found.
