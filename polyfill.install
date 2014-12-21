@@ -1,0 +1,42 @@
+<?php
+
+/**
+ * @file
+ * Install and uninstall functions for the polyfill module.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function polyfill_schema() {
+  $schema = array();
+
+  $schema['polyfill_sets'] = array(
+    'description' => 'Stores configuration options for polyfill sets.',
+    'fields' => array(
+      'pid' => array(
+        'description' => 'The primary identifier for polyfill set.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'label' => array(
+        'description' => 'The polyfill set administrative name.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'data' => array(
+        'description' => 'The configuration data for the polyfill set.',
+        'type' => 'blob',
+        'not null' => TRUE,
+        'size' => 'big',
+        'serialize' => TRUE,
+      ),
+    ),
+    'primary key' => array('pid'),
+  );
+
+  return $schema;
+}

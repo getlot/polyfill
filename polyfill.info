@@ -1,0 +1,7 @@
+name = Polyfill
+description = Polyfill
+core = 7.x
+package = Image
+version = 0.1
+dependencies[] = image
+configure = admin/config/media/polyfill

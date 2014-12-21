@@ -1,0 +1,285 @@
+<?php
+/**
+ * @file
+ * polyfill
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function polyfill_menu() {
+  $items = array();
+  $items['admin/config/media/polyfill'] = array(
+    'title' => 'Polyfill sets',
+    'description' => 'Configure polyfill sets that can be used.',
+    'page callback' => 'polyfill_list',
+    'access arguments' => array('administer polyfill sets'),
+    'file' => 'polyfill.admin.inc',
+  );
+  $items['admin/config/media/polyfill/list'] = array(
+    'title' => 'List',
+    'description' => 'List the current polyfill sets on the site.',
+    'page callback' => 'polyfill_list',
+    'access arguments' => array('administer polyfill sets'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 1,
+    'file' => 'polyfill.admin.inc',
+  );
+  $items['admin/config/media/polyfill/add'] = array(
+    'title' => 'Add style',
+    'description' => 'Add a new polyfill set.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('polyfill_add_form'),
+    'access arguments' => array('administer polyfill sets'),
+    'type' => MENU_LOCAL_ACTION,
+    'weight' => 2,
+    'file' => 'polyfill.admin.inc',
+  );
+  $items['admin/config/media/polyfill/edit/%polyfill_set'] = array(
+    'title' => 'Edit style',
+    'description' => 'Configure polyfill set.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('polyfill_form', 5),
+    'access arguments' => array('administer polyfill sets'),
+    'file' => 'polyfill.admin.inc',
+  );
+  $items['admin/config/media/polyfill/delete/%polyfill_set'] = array(
+    'title' => 'Delete style',
+    'description' => 'Delete polyfill set.',
+    'load arguments' => array(NULL, (string) IMAGE_STORAGE_NORMAL),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('polyfill_delete_form', 5),
+    'access arguments' => array('administer polyfill sets'),
+    'file' => 'polyfill.admin.inc',
+  );
+  $items['admin/config/media/polyfill/edit/%polyfill_set/styles/%image_style'] = array(
+    'title' => 'Edit image style',
+    'description' => 'Edit an existing style within a set.',
+    'load arguments' => array(5, (string) IMAGE_STORAGE_EDITABLE),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('polyfill_style_form', 5, 7),
+    'access arguments' => array('administer image styles'),
+    'file' => 'polyfill.admin.inc',
+  );
+  $items['admin/config/media/polyfill/edit/%polyfill_set/styles/%image_style/delete'] = array(
+    'title' => 'Delete image style',
+    'description' => 'Delete an existing style from a set.',
+    'load arguments' => array(5, (string) IMAGE_STORAGE_EDITABLE),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('polyfill_style_delete_form', 5, 7),
+    'access arguments' => array('administer image styles'),
+    'file' => 'polyfill.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function polyfill_permission() {
+  return array(
+    'administer polyfill sets' => array(
+      'title' => t('Administer polyfill sets'),
+      'description' => t('Create and modify polyfill sets'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_theme().
+ */
+function polyfill_theme() {
+  return array(
+    // Theme functions in polyfill.admin.inc.
+    'polyfill_list' => array(
+      'variables' => array('sets' => NULL),
+    ),
+    'polyfill_styles' => array(
+      'render element' => 'form',
+    ),
+    /*
+    'polyfill_formatter' => array(
+      'variables' => array('item' => NULL, 'path' => NULL, 'image_style' => NULL),
+    ),
+    */
+  );
+}
+
+/**
+ * Loads a style by style name or ID.
+ *
+ * May be used as a loader for menu items.
+ *
+ * @param $name
+ *   The name of the style.
+ * @param $isid
+ *   Optional. The numeric id of a style if the name is not known.
+ * @param $include
+ *   If set, this loader will restrict to a specific type of image style, may be
+ *   one of the defined Image style storage constants.
+ *
+ * @return
+ *   An image style array containing the following keys:
+ *   - "isid": The unique image style ID.
+ *   - "name": The unique image style name.
+ *   - "effects": An array of image effects within this image style.
+ *   If the image style name or ID is not valid, an empty array is returned.
+ * @see image_effect_load()
+ */
+function polyfill_load($name = NULL, $isid = NULL, $include = NULL) {
+  $styles = image_styles();
+
+  // If retrieving by name.
+  if (isset($name) && isset($styles[$name])) {
+    $style = $styles[$name];
+  }
+
+  // If retrieving by image style id.
+  if (!isset($name) && isset($isid)) {
+    foreach ($styles as $name => $database_style) {
+      if (isset($database_style['isid']) && $database_style['isid'] == $isid) {
+        $style = $database_style;
+        break;
+      }
+    }
+  }
+
+  // Restrict to the specific type of flag. This bitwise operation basically
+  // states "if the storage is X, then allow".
+  if (isset($style) && (!isset($include) || ($style['storage'] & (int) $include))) {
+    return $style;
+  }
+
+  // Otherwise the style was not found.
+  return FALSE;
+}
+
+/**
+ * Saves an image style.
+ *
+ * @param array $style
+ *   An image style array containing:
+ *   - name: A unique name for the style.
+ *   - isid: (optional) An image style ID.
+ *
+ * @return array
+ *   An image style array containing:
+ *   - name: An unique name for the style.
+ *   - old_name: The original name for the style.
+ *   - isid: An image style ID.
+ *   - is_new: TRUE if this is a new style, and FALSE if it is an existing
+ *     style.
+ */
+function polyfill_set_save($set) {
+  if (isset($set['pid']) && is_numeric($set['pid'])) {
+    drupal_write_record('polyfill_sets', $set, 'pid');
+  }
+  else {
+    drupal_write_record('polyfill_sets', $set);
+    $set['is_new'] = TRUE;
+  }
+
+  return $set;
+}
+
+/**
+ * Deletes polyfill set.
+ *
+ * @param $set
+ *   Polyfill set array.
+ *
+ * @return
+ *   TRUE on success.
+ */
+function polyfill_set_delete($set) {
+
+  db_delete('polyfill_sets')->condition('pid', $set['pid'])->execute();
+
+  return TRUE;
+}
+
+/**
+ * Loads all the effects for an image style.
+ *
+ * @param array $style
+ *   An image style array containing:
+ *   - isid: The unique image style ID that contains this image effect.
+ *
+ * @return array
+ *   An array of image styles associated with specified polyfill set in the
+ *   format array('pid' => array()), or an empty array if the specified set
+ *   has no styles.
+ * @see image_effects()
+ */
+function polyfill_set_styles($set) {
+  $sets = polyfill_sets();
+  $p_set_styles = array();
+  foreach ($sets as $p_set) {
+    if ($p_set['pid'] == $set['pid']) {
+      $p_set_styles[$set['pid']] = $p_set;
+    }
+  }
+
+  return $p_set_styles;
+}
+
+/**
+ * Loads all image effects from the database.
+ *
+ * @return
+ *   An array of all image effects.
+ * @see image_effect_load()
+ */
+function polyfill_sets() {
+  $sets = &drupal_static(__FUNCTION__);
+
+  if (!isset($sets)) {
+    $sets = array();
+
+    // Add database image effects.
+    $result = db_select('polyfill_sets', NULL, array('fetch' => PDO::FETCH_ASSOC))
+      ->fields('polyfill_sets')
+      ->execute();
+    foreach ($result as $set) {
+      $set['data'] = unserialize($set['data']);
+      $sets[$set['pid']] = $set;
+    }
+  }
+
+  return $sets;
+}
+
+
+/**
+ * Gets an array of polyfill sets suitable for using as select list options.
+ *
+ * @param $include_empty
+ *   If TRUE a <none> option will be inserted in the options array.
+ * @param $output
+ *   Optional flag determining how the options will be sanitized on output.
+ *   Leave this at the default (CHECK_PLAIN) if you are using the output of
+ *   this function directly in an HTML context, such as for checkbox or radio
+ *   button labels, and do not plan to sanitize it on your own. If using the
+ *   output of this function as select list options (its primary use case), you
+ *   should instead set this flag to PASS_THROUGH to avoid double-escaping of
+ *   the output (the form API sanitizes select list options by default).
+ *
+ * @return
+ *   Array of ipolyfill sets with the pid as key and the label as value.
+ */
+function polyfill_options($include_empty = TRUE, $output = CHECK_PLAIN) {
+  $sets = polyfill_sets();
+  $options = array();
+  if ($include_empty && !empty($sets)) {
+    $options[''] = t('<none>');
+  }
+  foreach ($sets as $pid => $set) {
+    $options[$pid] = ($output == PASS_THROUGH) ? $set['label'] : check_plain($set['label']);
+  }
+
+  if (empty($options)) {
+    $options[''] = t('No defined styles');
+  }
+  return $options;
+}
